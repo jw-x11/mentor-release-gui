@@ -1,0 +1,651 @@
+# Mentor Formal Languages CLI
+
+The command-line interface (CLI) for the formal languages implemented in Mentor can be used for various operations on different types of formal language specifications. This documentation goes over which operations can be done on which specifications, and the syntax used for each. The CLI executable is named `mentor`.
+
+## Contents
+
+- [Deterministic Finite Automata (DFA)](#deterministic-finite-automata-dfa)
+- [Nondeterministic Finite Automata (NFA)](#nondeterministic-finite-automata-nfa)
+- [Regular Expressions (RE)](#regular-expressions-re)
+- [Context-Free Grammars (CFG)](#context-free-grammars-cfg)
+- [Pushdown Automata (PDA)](#pushdown-automata-pda)
+- [Turing Machines (TM)](#turing-machines-tm)
+- [Hierarchical Turing Machines (HTM)](#hierarchical-turing-machines-htm)
+
+## Deterministic Finite Automata (DFA)
+
+Any file ending in `.dfa` is a DFA in the syntax below.
+
+### Commands
+
+For a DFA, Mentor can test an input string, output a state diagram, generate the first n words of the language in shortlex order, and compare the DFA with another regular language (DFA, NFA, or RE).
+
+#### Accept or reject an input
+
+```
+mentor <name>.dfa accept <string>
+```
+
+```
+mentor file.dfa accept abba
+mentor file.dfa accept 'abba#abba'
+mentor file.dfa accept ""
+```
+
+If the input contains special characters, wrap it in quotes. Empty quotes are the empty string.
+
+#### Output a state diagram
+
+```
+mentor <name>.dfa graph <name2>
+```
+
+```
+mentor file.dfa graph out
+```
+
+This writes `<name2>.pdf` with the DFA state diagram.
+
+#### Generate words
+
+```
+mentor <name>.dfa gen_words <number>
+```
+
+```
+mentor file.dfa gen_words 10
+```
+
+Words are listed in shortlex order: shorter words come first, and words of the same length are in lexicographic order.
+
+#### Compare against a regular language
+
+```
+mentor <name>.dfa compare <name2>.{dfa,nfa,re}
+```
+
+```
+mentor file.dfa compare file2.dfa
+mentor file.dfa compare file2.nfa
+mentor file.dfa compare file2.re
+```
+
+Mentor reports that the two languages are equivalent, or gives counterexamples: a word in the first language but not the second, and/or a word in the second but not the first.
+
+### DFA syntax
+
+```
+alphabet: {<symbol1>, <symbol2>, ...}
+start: <state>
+accepting: {<state1>, <state2>, ...}
+<from_state> <transition>...
+```
+
+A transition has one of these forms:
+
+1. `(<symbol> -> <to_state>)`
+2. `({<symbol1>, <symbol2>, ...} -> <to_state>)`
+3. `(. -> <to_state>)`
+
+Alphabet symbols and states are alphanumeric strings. Form 1 reads `<symbol>` and goes to `<to_state>`. Form 2 reads any of the listed symbols. Form 3 reads any symbol in the alphabet. A DFA needs a non-empty alphabet and exactly one transition from each state for each alphabet symbol. The accepting set may be empty. C++-style comments are allowed.
+
+#### Example 1
+
+```
+// Language is { w in {a,b}* | any a is immediately preceded by b }
+alphabet: {a, b}
+start: q0
+accepting: {q0, q2}
+q0 (a -> q1) (b -> q2)
+q1 (a -> q1) (b -> q1)
+q2 (a -> q0) (b -> q2)
+```
+
+#### Example 2
+
+```
+// Same language as above, but using set notation for q1's transitions.
+alphabet: {a, b}
+start: q0
+accepting: {q0, q2}
+q0 (a -> q1) (b -> q2)
+q1 ({a,b} -> q1) // This is a shortcut for specifying two similar transitions.
+q2 (a -> q0) (b -> q2)
+```
+
+#### Example 3
+
+```
+// Same language as above, but using dot notation for q1's transitions.
+alphabet: {a, b}
+start: q0
+accepting: {q0, q2}
+q0 (a -> q1) (b -> q2)
+q1 (. -> q1) // This is a shortcut specifying the whole alphabet.
+q2 (a -> q0) (b -> q2)
+```
+
+## Nondeterministic Finite Automata (NFA)
+
+Any file ending in `.nfa` is an NFA in the syntax below.
+
+### Commands
+
+The NFA commands are the same as for DFA.
+
+### NFA syntax
+
+```
+alphabet: {<symbol1>, <symbol2>, ...}
+start: <state>
+accepting: {<state1>, <state2>, ...}
+<from_state> <transition>...
+```
+
+A transition has one of these forms:
+
+1. `(<symbol> -> <to_state>)`
+2. `({<symbol1>, <symbol2>, ...} -> <to_state>)`
+3. `(. -> <to_state>)`
+4. `(_ -> <to_state>)`
+
+Alphabet symbols and states are alphanumeric strings. Forms 1–3 match the DFA forms. Form 4 moves to `<to_state>` without reading a symbol. `_` is not allowed in the alphabet and stands for the empty string. It can also appear in a set, so `({a,_} -> q1)` either reads `a` or moves without reading, and goes to `q1`. An NFA needs a non-empty alphabet. The accepting set may be empty. C++-style comments are allowed.
+
+#### Example
+
+```
+// Any number of 'a' followed by any number of 'b'.
+alphabet: {a, b}
+start: q0
+accepting: {q3}
+q0 (_ -> q1) (_ -> q2) (_ -> q3)
+q1 (a -> q1) ({a,_} -> q2)
+q2 (_ -> q3)
+q3 (b -> q3)
+```
+
+## Regular Expressions (RE)
+
+Any file ending in `.re` is a regular expression in the syntax below.
+
+### Commands
+
+The regular expression commands are the same as for DFA.
+
+### RE syntax
+
+```
+alphabet: {<char1>, <char2>, ...}
+<regular expression>
+```
+
+Base expressions:
+
+- `<char>`: a single character, not one of `| & - * + ? ( ) . _`
+- `_`: the empty string
+- `.`: any character in the alphabet
+
+Compound expressions, where `re`, `re1`, and `re2` are regular expressions:
+
+- `re1re2`: concatenation
+- `re1 | re2`: union
+- `re1 & re2`: intersection
+- `re*`: Kleene star, zero or more repetitions
+- `re+`: one or more repetitions, the same as `rere*`
+- `re?`: zero or one repetition, the same as `_ | re`
+- `-re`: the complement of `re`
+- `(re)`: grouping
+
+C++-style comments are allowed.
+
+#### Example
+
+```
+// Not a meaningful language, just showing all the operators.
+alphabet: {a, b}
+(a(_ | b) & (..)* ) | ((a.a)+ & -(a?b*))
+```
+
+## Context-Free Grammars (CFG)
+
+Any file ending in `.cfg` is a CFG in the syntax below.
+
+### Commands
+
+For a CFG, Mentor can test an input string, generate the first n words in shortlex order, and generate every word up to length n, also in shortlex order.
+
+#### Accept or reject an input
+
+```
+mentor <name>.cfg accept <string>
+```
+
+#### Generate words
+
+```
+mentor <name>.cfg gen_words <number>
+```
+
+#### Generate words up to a length
+
+```
+mentor <name>.cfg gen_upto_length <number>
+```
+
+### CFG syntax
+
+```
+<nonterminal> -> <rhs1> | <rhs2> | ...
+```
+
+A right-hand side is a sequence of nonterminals and characters, or `_` for the empty string. A nonterminal is an alphanumeric string. A character is any character except `_` or `|`. Nonterminals on the right-hand side must be surrounded by spaces. The first nonterminal is the start symbol. C++-style comments are allowed.
+
+#### Example
+
+```
+Start -> X | Y | Start Start
+X -> ac X ca | cb X | abc | _
+Y -> c Y | a | _
+```
+
+## Pushdown Automata (PDA)
+
+Any file ending in `.pda` is a PDA in the syntax below. Mentor's PDAs accept by accepting state, regardless of what is left on the stack. A PDA that accepts by empty stack can be rewritten into this style, and the other way around.
+
+### Commands
+
+The PDA commands are the same as for CFG, plus `graph`, which writes the state diagram to a PDF.
+
+#### Output a state diagram
+
+```
+mentor <name>.pda graph <name2>
+```
+
+### PDA syntax
+
+```
+alphabet: {<symbol1>, <symbol2>, ...}
+start: <state>
+accepting: {<state1>, <state2>, ...}
+<from_state> <transition>...
+```
+
+A transition has one of these forms:
+
+1. `(<input>, <pop> -> <push>, <to_state>)`
+2. `({<input1>, <input2>, ...}, <pop> -> <push>, <to_state>)`
+3. `(., <pop> -> <push>, <to_state>)`
+
+The alphabet is the input alphabet, not the stack alphabet. A symbol is any character except `{ } ( ) . _`. A state is an alphanumeric string. An input is an input symbol or `_` for the empty string. A pop is a stack symbol or `_`. A push is a string of stack symbols, so a PDA can push more than one symbol at once; the leftmost symbol ends up on top. An empty push is `""`. A set may include `_`. Dot notation covers input symbols only, not `_`. C++-style comments are allowed.
+
+#### Example 1
+
+```
+alphabet: {0, 1}
+start: q0
+accepting: {q0, q3}
+q0 (_, _ -> $, q1) // Notice that $ is a stack symbol and not in the alphabet
+q1 (0, _ -> 0, q1) (1, 0 -> _, q2)
+q2 (1, 0 -> _, q2) (_, $ -> _, q3)
+```
+
+#### Example 2
+
+```
+// An example pushing multiple symbols onto the stack at once.
+alphabet: {+, [, ], a}
+start: Q0
+accepting: {Q2}
+Q0 (_, _ -> e$, Q1)
+Q1 (_, e -> f+e, Q1)
+Q1 (_, e -> f, Q1)
+Q1 (_, f -> [e], Q1)
+Q1 (_, f -> a, Q1)
+Q1 (+, + -> _, Q1)
+Q1 ([, [ -> _, Q1)
+Q1 (], ] -> _, Q1)
+Q1 (a, a -> _, Q1)
+Q1 (_, $ -> _, Q2)
+```
+
+#### Example 3
+
+```
+// An example using dot notation.
+alphabet: {0, 1}
+start: q0
+accepting: {q0, q3}
+q0 (., _ -> $, q1)
+q1 (0, _ -> 0, q1) (1, 0 -> _, q2)
+q2 (1, 0 -> _, q2) (_, $ -> _, q3)
+```
+
+#### Example 4
+
+```
+// An example using set notation.
+alphabet: {0, 1}
+start: q0
+accepting: {q0, q3}
+q0 ({0,1}, _ -> $, q1)
+q1 (0, _ -> 0, q1) (1, 0 -> _, q2)
+q2 (1, 0 -> _, q2) (_, $ -> _, q3)
+```
+
+## Turing Machines (TM)
+
+Mentor's Turing machines have a leftmost tape cell and a tape that extends infinitely to the right. The head starts on the leftmost cell, at the beginning of the input. Moving left from that cell leaves the head in place. A transition reads the current cell, writes a symbol, and moves the head left one cell, right one cell, back to the leftmost cell, or not at all.
+
+Any file ending in `.tm` is a TM in the syntax below.
+
+### Commands
+
+Mentor can test an input and can trace the computation. Both commands take an optional step limit so a looping machine can be stopped. One step is one transition.
+
+#### Accept or reject an input
+
+```
+mentor <name>.tm accept <string> [<number>]
+```
+
+```
+mentor file.tm accept abba
+mentor file.tm accept abba 1000
+```
+
+#### Trace a computation
+
+```
+mentor <name>.tm trace <string> [<number>]
+```
+
+```
+mentor file.tm trace abba
+mentor file.tm trace abba 1000
+```
+
+Each configuration is `<tape left of the head>|<current state>|<tape under and right of the head>`.
+
+### TM syntax
+
+```
+alphabet: {<symbol1>, <symbol2>, ...}
+start: <state>
+<from_state> <transition>...
+```
+
+A transition has one of these forms:
+
+1. `(<symbol> -> <symbol>, {L,R,S,H} <to_state>)`
+2. `({<symbol1>, <symbol2>, ...} -> <symbol>, {L,R,S,H} <to_state>)`
+3. `({<symbol1>, <symbol2>, ...} -> ., {L,R,S,H} <to_state>)`
+4. `(. -> <symbol>, {L,R,S,H} <to_state>)`
+5. `(. -> ., {L,R,S,H} <to_state>)`
+
+An alphabet symbol is any character except `{ } ( ) . ,`. `_` is reserved for a blank cell, not the empty string. A state is an alphanumeric string. The names `accept` and `reject` are the accepting and rejecting states, and they cannot have outgoing transitions.
+
+Tape directions:
+
+- `L`: move left one cell
+- `R`: move right one cell
+- `S`: reset to the leftmost cell
+- `H`: stay in place
+
+A `.` on the left of an arrow means any tape symbol, including blank. When the left side is a set or `.`, a `.` on the right means "write the symbol that was read." If the tape alphabet is `{a,b,_}`, these transitions are equivalent:
+
+- `q1 (. -> .,R q1)`
+- `q1 ({a,b,_} -> .,R q1)`
+- `q1 (a -> a,R q1) (b -> b,R q1) (_ -> _,R q1)`
+
+A TM must be deterministic. Missing transitions implicitly go to `reject`. C++-style comments are allowed.
+
+#### Example 1
+
+```
+// Decides L = { 0{n}1{n}2{n} | n >= 0 }
+alphabet: {0, 1, 2, x}
+start: q0
+q0 (0 -> _,R q1) (x -> x,R q4) (_ -> _,L accept)
+q1 (0 -> 0,R q1) (x -> x,R q1) (1 -> x,R q2)
+q2 (x -> x,R q2) (1 -> 1,R q2) (2 -> x,L q3)
+q3 (x -> x,L q3) (0 -> 0,L q3) (1 -> 1,L q3) (_ -> _,R q0)
+q4 (x -> x,R q4) (_ -> _,L accept)
+```
+
+#### Example 2
+
+```
+// Same except uses sets and dot notation.
+alphabet: {0, 1, 2, x}
+start: q0
+q0 (0 -> _,R q1) (x -> x,R q4) (_ -> _,L accept)
+q1 ({0,x} -> .,R q1) (1 -> x,R q2)
+q2 ({1,x} -> .,R q2) (2 -> x,L q3)
+q3 ({0,1,x} -> .,L q3) (_ -> _,R q0)
+q4 (x -> x,R q4) (_ -> _,L accept)
+```
+
+## Hierarchical Turing Machines (HTM)
+
+Hierarchical Turing Machine is a language made for Mentor. It is a higher-level language than TM, with sequencing, conditionals, and loops. It compiles directly to a Turing machine, so an algorithm can be written as executable code instead of pseudocode. The section below describes how those constructs are built out of Turing machines.
+
+Any file ending in `.htm` is an HTM program in the syntax below.
+
+### Composing TMs into an HTM
+
+An HTM is built by composing smaller Turing machines. There are three compositions: sequencing, conditionals, and loops. Those become functions, and functions are composed by calls. The states of the constituent machines are assumed to be disjoint.
+
+#### Sequencing
+
+Given TM1 and TM2, TM3 runs TM1 and then TM2:
+
+1. Union the states and transitions of TM1 and TM2.
+2. Make the start state of TM3 the start state of TM1.
+3. Merge the accept state of TM1 with the start state of TM2.
+
+TM3 follows TM1, and where TM1 would accept, it continues as TM2 on the tape TM1 left behind.
+
+#### Conditionals
+
+Given TM1, TM2, and TM3, TM4 uses TM1 as a guard and then runs TM2 or TM3:
+
+1. Union the states and transitions of TM1, TM2, and TM3.
+2. Make the start state of TM4 the start state of TM1.
+3. Merge the accept state of TM1 with the start state of TM2.
+4. Merge the reject state of TM1 with the start state of TM3.
+
+TM4 follows TM1. If TM1 would accept, it continues as TM2. If TM1 would reject, it continues as TM3.
+
+#### Loops
+
+Given TM1, TM2, and TM3, TM4 uses TM1 as a guard. While TM1 would accept, it runs TM2 and checks the guard again. When TM1 would reject, it exits to TM3:
+
+1. Union the states and transitions of TM1, TM2, and TM3.
+2. Make the start state of TM4 the start state of TM1.
+3. Merge the accept state of TM1 with the start state of TM2.
+4. Merge the accept state of TM2 with the start state of TM1.
+5. Merge the reject state of TM1 with the start state of TM3.
+
+TM4 follows TM1, then TM2 when TM1 would accept, or TM3 when TM1 would reject. When TM2 would accept, the guard is evaluated again. The body keeps running while the guard would accept, and the loop ends when the guard would reject.
+
+#### Functions
+
+Functions let a machine be reused and parameterized by the symbols it operates on. A leaf function is an ordinary TM whose parameters are sets of alphabet symbols. A non-leaf function is a sequence of statements: calls, conditionals, and loops. A call copies the machine of the callee, which may itself be a leaf or a non-leaf. The whole program translates into one Turing machine.
+
+### Commands
+
+The HTM commands are the same as for TM. Steps count leaf-function calls rather than TM transitions, and traces show the sequence of function calls rather than tape configurations.
+
+### HTM syntax
+
+A program has an alphabet and function definitions. A function named `Main` is required and is the entry point. A leaf function body is a TM. A non-leaf function body is a sequence of calls, conditionals, and loops.
+
+```
+Program -> alphabet: {<char1>, <char2>, ...} Function+
+Function -> def <name> [[ TmBody ]]
+          | def <name>(<param1>, <param2>, ...) [[ TmBody ]]
+          | def <name> { Statement+ }
+          | def <name>(<param1>, <param2>, ...) { Statement+ }
+TmBody -> <TM syntax, except a parameter may be used for a tape symbol,
+           and the alphabet is not repeated>
+Statement -> accept | reject | Call | Condition | Loop
+Call -> <name> | <name>(Arg1, Arg2, ...)
+Arg -> $<param> | <char> | {<char1>, <char2>, ...} | -{<char1>, <char2>, ...}
+Block -> Statement | { Statement+ }
+Condition -> if [not] Call Block | if [not] Call Block else Block
+Loop -> while [not] Call Block
+```
+
+The alphabet always includes the blank `_`, even though it is not listed. A non-leaf body has an implicit `reject` at the end: if it never accepts, it rejects. Function names and parameters are alphanumeric. Inside a function, a parameter is written with a `$` prefix. Leaf functions do not declare an alphabet; they use the program alphabet.
+
+A sequence of statements stops at the first statement that rejects, and the function rejects. A statement that accepts continues to the next statement. The explicit `accept` statement accepts the whole function.
+
+A call argument is an alphabet symbol, a set of symbols, the complement of a set, or a parameter. A parameter's value is always a set of alphabet symbols, possibly a singleton. Condition and loop guards are function calls, and they may be negated. C++-style comments are allowed.
+
+Recursion would compile to an infinite Turing machine, so recursive programs are not allowed.
+
+#### Example 1
+
+```
+// L = { a{n}b{n}c{n} | n >= 0 }
+alphabet: {a,b,c,x}
+// Reset tape head to leftmost position.
+def StartOfTape [[
+start: q0
+q0 (. -> .,S accept)
+]]
+// Move one cell right, without writing anything.
+def Right [[
+start: q0
+q0 (. -> .,R accept)
+]]
+// Accept if the current tape cell belongs in A, otherwise reject.
+def Read(A) [[
+start: q0
+q0 ($A -> .,H accept)
+]]
+// Write A to the current tape cell (miscompiles if A is a non-singleton set).
+def Write(A) [[
+start: q0
+q0 (. -> $A,H accept)
+]]
+// Move right until we read a symbol in A.
+def FindRight(A) {
+while not Read($A) Right
+accept
+}
+// Verify whether the input is in the correct format: "_ | a+b+c+".
+def CorrectFormat {
+if Read(_) accept
+if not Read(a) reject
+FindRight(-{a})
+if not Read(b) reject
+FindRight(-{b})
+if not Read(c) reject
+FindRight(-{c})
+if Read(_) accept
+}
+// Verify that the input is in the correct format, then iterate marking off
+// matching a, b, and c symbols on the tape. If they all match then accept,
+// otherwise reject.
+def Main {
+CorrectFormat
+StartOfTape
+while not Read(_) {
+Read(a)
+Write(x)
+FindRight({b,_})
+if Read(_) reject
+Write(x)
+FindRight({c,_})
+if Read(_) reject
+Write(x)
+StartOfTape
+FindRight(-{x})
+}
+accept
+}
+```
+
+#### Example 2
+
+```
+// L = { wcw | w in {a,b}* }
+alphabet: {a,b,c,x}
+// Reset tape head to leftmost position.
+def StartOfTape [[
+start: q0
+q0 (. -> .,S accept)
+]]
+// Move one cell left, without writing anything.
+def Left [[
+start: q0
+q0 (. -> .,L accept)
+]]
+// Move one cell right, without writing anything.
+def Right [[
+start: q0
+q0 (. -> .,R accept)
+]]
+// Accept if the current tape cell belongs in A, otherwise reject.
+def Read(A) [[
+start: q0
+q0 ($A -> .,H accept)
+]]
+// Write A to the current tape cell (miscompiles if A is a non-singleton set).
+def Write(A) [[
+start: q0
+q0 (. -> $A,H accept)
+]]
+// Move left until we read a symbol in A.
+def FindLeft(A) {
+while not Read($A) Left
+accept
+}
+// Move right until we read a symbol in A.
+def FindRight(A) {
+while not Read($A) Right
+accept
+}
+// Mark off the current tape cell holding a symbol in A, then find the next
+// unmarked symbol after the 'c', verify that it is the same symbol as before,
+// and mark it off as well.
+def Match(A) {
+if not Read($A) reject
+Write(x)
+FindRight(c)
+FindRight({a,b,_})
+if Read($A) {
+Write(x)
+accept
+}
+}
+// Verify whether the input is in the correct format: "{a,b}*c{a,b}*", then
+// reset to start of tape.
+def CorrectFormat {
+FindRight(-{a,b})
+Read(c)
+Right
+FindRight(-{a,b})
+if Read(_) {
+StartOfTape
+accept
+}
+}
+// Verify that the input is in the correct format, then iterate marking off
+// matching {a,b} symbols on the tape. If they all match then accept,
+// otherwise reject.
+def Main {
+CorrectFormat
+while not Read(c) {
+if Read(a) Match(a) else Match(b)
+FindLeft(c)
+FindLeft(x)
+Right
+}
+Right
+FindRight(-{x})
+if Read(_) accept
+}
+```

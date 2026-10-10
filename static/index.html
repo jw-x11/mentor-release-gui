@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mentor</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <h1>Mentor</h1>
+      <p>Formal languages</p>
+    </div>
+    <nav class="kinds" id="kinds" aria-label="Specification type"></nav>
+    <button type="button" class="ghost" id="guideBtn">Guide</button>
+  </header>
+
+  <main class="bench">
+    <section class="paper" aria-label="Specification editor">
+      <div class="toolbar">
+        <label class="field">
+          <span>Example</span>
+          <select id="exampleSelect">
+            <option value="">Choose an example</option>
+          </select>
+        </label>
+        <div class="toolbar-actions">
+          <label class="field file-name">
+            <span>File</span>
+            <input id="fileName" type="text" spellcheck="false" autocomplete="off" placeholder="machine.dfa" aria-label="File name">
+          </label>
+          <button type="button" class="ghost" id="uploadBtn">Open</button>
+          <button type="button" class="ghost" id="downloadBtn">Save</button>
+          <input type="file" id="fileInput" hidden>
+        </div>
+      </div>
+      <div class="editor" id="editorDrop">
+        <pre class="gutter" id="gutter" aria-hidden="true">1</pre>
+        <textarea id="source" spellcheck="false" wrap="off" aria-label="Automaton specification"></textarea>
+      </div>
+      <div class="compare-wrap" id="compareWrap" hidden>
+        <div class="toolbar">
+          <span class="label">Second language</span>
+          <label class="field compact">
+            <span>Type</span>
+            <select id="compareKind">
+              <option value="dfa">.dfa</option>
+              <option value="nfa">.nfa</option>
+              <option value="re">.re</option>
+            </select>
+          </label>
+        </div>
+        <div class="editor short">
+          <pre class="gutter" id="compareGutter" aria-hidden="true">1</pre>
+          <textarea id="compareSource" spellcheck="false" wrap="off" aria-label="Second regular language"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="board" aria-label="Commands and results">
+      <form id="runForm">
+        <div class="command-row" id="commands" role="radiogroup" aria-label="Mentor command"></div>
+        <div class="args" id="args"></div>
+        <div class="run-row">
+          <button type="submit" class="run" id="runBtn">Run</button>
+          <code class="preview" id="preview"></code>
+        </div>
+      </form>
+      <div class="result" id="result" aria-live="polite">
+        <p class="placeholder">Write a specification, pick a command, and run.</p>
+      </div>
+    </section>
+  </main>
+
+  <aside class="help" id="help">
+    <h2 id="helpTitle">Syntax</h2>
+    <div id="helpBody"></div>
+  </aside>
+
+  <footer class="credit">
+    Mentor CLI from <a href="https://github.com/hardekbc/mentor-release/tree/master">hardekbc/mentor-release</a>
+  </footer>
+
+  <dialog id="guideDialog">
+    <form method="dialog" class="guide-head">
+      <h2>User guide</h2>
+      <button type="submit" class="ghost">Close</button>
+    </form>
+    <div id="guideText"></div>
+  </dialog>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
